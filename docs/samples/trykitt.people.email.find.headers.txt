@@ -1,0 +1,20 @@
+HTTP/2 200 
+date: Wed, 07 Oct 2026 16:39:58 GMT
+content-type: application/json
+apigw-requestid: E4dafhX7IAMEJeA=
+content-security-policy: sandbox
+referrer-policy: no-referrer
+rndr-id: 28079723-145c-4e7f
+server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-powered-by: Kitt Server
+x-render-origin-server: uvicorn
+x-treg-call-id: 6a8a2738d1424942b6bbb5944910119e
+x-treg-cost-micro: 5000
+cf-cache-status: DYNAMIC
+cf-ray: a46e583f8e6e3c2f-IAD
+alt-svc: h3=":443"; ma=86400
+

@@ -1,0 +1,39 @@
+HTTP/2 200 
+date: Wed, 07 Oct 2026 16:39:20 GMT
+content-type: application/json; charset=utf-8
+access-control-allow-credentials: true
+access-control-allow-origin: https://app.dropleads.io
+access-control-expose-headers: Content-Type,Authorization
+alt-svc: h3=":443"; ma=86400
+cf-cache-status: DYNAMIC
+content-security-policy: default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests
+content-security-policy: sandbox
+cross-origin-opener-policy: same-origin
+cross-origin-resource-policy: cross-origin
+etag: W/"4b8-qBvjdsO/s+EKBlmlSwcMWuz1XHM"
+origin-agent-cluster: ?1
+referrer-policy: no-referrer
+rndr-id: 69a98168-aab8-4084
+server: cloudflare
+strict-transport-security: max-age=15552000; includeSubDomains
+vary: Origin
+vary: Accept-Encoding
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-content-type-options: nosniff
+x-dns-prefetch-control: off
+x-download-options: noopen
+x-frame-options: SAMEORIGIN
+x-permitted-cross-domain-policies: none
+x-ratelimit-limit-day: 2000000
+x-ratelimit-limit-minute: 2000
+x-ratelimit-remaining-day: 1953801
+x-ratelimit-remaining-minute: 1992
+x-ratelimit-reset-day: 1791417599999
+x-ratelimit-reset-minute: 1791391200000
+x-render-origin-server: uvicorn
+x-treg-call-id: 3f472c1d7ffd4ac18c63f5387f46e9e6
+x-treg-cost-micro: 0
+x-xss-protection: 0
+cf-ray: a46e5758cb745f67-IAD
+

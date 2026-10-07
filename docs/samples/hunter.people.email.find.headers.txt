@@ -1,0 +1,30 @@
+HTTP/2 200 
+date: Wed, 07 Oct 2026 16:40:07 GMT
+content-type: application/json; charset=utf-8
+access-control-allow-headers: Email-Hunter-Origin,mcp-protocol-version
+access-control-allow-methods: GET, POST, PUT, DELETE, OPTIONS
+access-control-allow-origin: *
+alt-svc: h3=":443"; ma=86400
+cache-control: max-age=0, private, must-revalidate
+cf-cache-status: DYNAMIC
+content-security-policy: sandbox
+etag: W/"d6fc7d478aaddf937eb78a2ea9c20193"
+permissions-policy: interest-cohort=()
+referrer-policy: strict-origin-when-cross-origin
+rndr-id: cee425fd-0a9b-49d6
+server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-permitted-cross-domain-policies: none
+x-render-origin-server: uvicorn
+x-request-id: 4816b5c1-bd75-4015-8342-79f17ac0be53
+x-runtime: 0.891584
+x-treg-call-id: ed0b592534ba4538abce8b7986774b9a
+x-treg-cost-micro: 24500
+x-treg-hint: feedback
+x-user: 7216385
+cf-ray: a46e58811a3c9d2e-IAD
+

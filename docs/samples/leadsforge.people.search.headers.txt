@@ -1,0 +1,23 @@
+HTTP/2 200 
+date: Wed, 07 Oct 2026 16:39:31 GMT
+content-type: application/json
+content-security-policy: sandbox
+referrer-policy: no-referrer
+rndr-id: 5f32d6f7-0de5-42f4
+server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains
+vary: Origin
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-ratelimit-limit: 120
+x-ratelimit-remaining: 117
+x-ratelimit-reset: 1791391186
+x-render-origin-server: uvicorn
+x-treg-call-id: 5fe62402cb294687b26de1f2dbf510ea
+x-treg-cost-micro: 0
+x-treg-hint: feedback
+cf-cache-status: DYNAMIC
+cf-ray: a46e579ecb4f72e1-IAD
+alt-svc: h3=":443"; ma=86400
+

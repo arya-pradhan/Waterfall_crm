@@ -1,0 +1,12 @@
+Subject: Internship interest — $company
+
+Hi $first_name,
+
+I'm reaching out because I'd love to intern at $company. $signal
+
+$sender_pitch
+
+If there's a role on your team (or someone better to talk to), I'd be grateful for a pointer. Happy to send a resume or work samples.
+
+Thanks for your time,
+$sender_name

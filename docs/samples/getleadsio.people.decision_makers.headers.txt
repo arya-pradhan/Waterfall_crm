@@ -1,0 +1,26 @@
+HTTP/2 200 
+date: Wed, 07 Oct 2026 16:38:55 GMT
+content-type: application/json
+alt-svc: h3=":443"; ma=86400
+cache-control: no-store
+content-security-policy: sandbox
+referrer-policy: no-referrer
+rndr-id: 6a7f6f84-ea9e-4188
+server: cloudflare
+set-cookie: AWSALB=56xRGG519/w5Br2nBMuNuQqb8E+1ivdWmcwwfTeGj5xc0Pzs+dQgUq2MJAl4fx+LXPNcKfJTVjqqhqjlQckxdzojGApGH/bLkMe0MpVhu/sCLutc6nBrUphIhrao; Expires=Wed, 14 Oct 2026 16:38:55 GMT; Path=/
+set-cookie: AWSALBCORS=56xRGG519/w5Br2nBMuNuQqb8E+1ivdWmcwwfTeGj5xc0Pzs+dQgUq2MJAl4fx+LXPNcKfJTVjqqhqjlQckxdzojGApGH/bLkMe0MpVhu/sCLutc6nBrUphIhrao; Expires=Wed, 14 Oct 2026 16:38:55 GMT; Path=/; SameSite=None
+strict-transport-security: max-age=31536000; includeSubDomains
+vary: RSC, Next-Router-State-Tree, Next-Router-Prefetch
+vary: Accept-Encoding
+via: 1.1 63227cf14d6d2219c6d94e402898004a.cloudfront.net (CloudFront)
+x-amz-cf-id: X5wOHCe6Gk_Wtv24fDvBd5KsuTt5SyK-lXNU82FfypDnTln7SGpobw==
+x-amz-cf-pop: HIO52-P5
+x-cache: Miss from cloudfront
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-render-origin-server: uvicorn
+x-treg-call-id: f897ab4dcc684eb8acde166dbe09e7ae
+x-treg-cost-micro: 0
+cf-cache-status: DYNAMIC
+cf-ray: a46e56bfc85c396d-IAD
+

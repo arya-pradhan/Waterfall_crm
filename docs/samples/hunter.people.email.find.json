@@ -1,0 +1,32 @@
+{
+  "data": {
+    "first_name": "Fred",
+    "last_name": "Bilbo",
+    "email": "fbilbo@qualitycool.com",
+    "score": 97,
+    "domain": "qualitycool.com",
+    "accept_all": false,
+    "position": null,
+    "twitter": null,
+    "linkedin_url": null,
+    "phone_number": null,
+    "company": "Quality Cooling",
+    "source_type": "generated",
+    "sources": [],
+    "verification": {
+      "date": "2026-10-07",
+      "status": "valid"
+    }
+  },
+  "meta": {
+    "params": {
+      "first_name": null,
+      "last_name": null,
+      "full_name": "Fred Bilbo",
+      "domain": "qualitycool.com",
+      "company": null,
+      "linkedin_handle": null,
+      "max_duration": null
+    }
+  }
+}

@@ -1,0 +1,12 @@
+Subject: Quick question about $company
+
+Hi $first_name,
+
+I came across $company while looking at $category businesses in $city — $rating stars across $review_count reviews is a reputation most shops would love to have.
+
+$sender_pitch
+
+Would you be open to a 15-minute call next week? If the timing's wrong, no worries at all.
+
+Best,
+$sender_name

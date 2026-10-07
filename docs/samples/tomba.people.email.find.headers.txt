@@ -1,0 +1,40 @@
+HTTP/2 200 
+date: Wed, 07 Oct 2026 16:40:06 GMT
+content-type: application/json; charset=utf-8
+alt-svc: h3=":443"; ma=86400
+cf-cache-status: DYNAMIC
+content-security-policy: default-src 'self' http: https: data: blob: 'unsafe-inline'
+content-security-policy: sandbox
+etag: W/"379-999077878"
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+ratelimit: "rps";r=0;t=1, "daily";r=0;t=26400
+ratelimit-policy: "rps";q=0;w=1, "daily";q=0;w=86400
+referrer-policy: no-referrer-when-downgrade
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=X8LYj90Tw5zSk%2BMJhrflHu0h1LxKKEoQ6JgMfzqWlFCD0fu%2Fy52mxwm06OVS10x4LfaPcbe5fZBQcrDgQXT0vBbzxVR6TzLzU%2BNb2rhmXT%2Fb%2B5B8odGWnHeAdHyozA%3D%3D"}]}
+rndr-id: f61fc64c-774d-442e
+server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains; preload
+vary: Accept-Encoding
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-content-type-options: nosniff
+x-daily-rate-limit: 0
+x-daily-request-left: 0
+x-daily-reset-seconds: 26400
+x-frame-options: SAMEORIGIN
+x-minute-rate-limit: 0
+x-minute-request-left: 0
+x-minute-reset-seconds: 1
+x-render-origin-server: uvicorn
+x-request-id: Bqovfh55_J4UOglGmCAissMRq21NIt_PQYaZnnZXw04
+x-runtime: 7.121080901s
+x-search-limit: 350000
+x-search-remaining: 130001
+x-second-rate-limit: 0
+x-tomba-ip: 74.220.48.160
+x-treg-call-id: 33a6745dc98a485e92016d4c789c5c28
+x-treg-cost-micro: 8900
+x-user-id: 359279
+x-xss-protection: 1; mode=block
+cf-ray: a46e585178462539-IAD
+
