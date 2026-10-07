@@ -27,7 +27,7 @@ def render(conn: sqlite3.Connection, person_id: int, template: str | None = None
     fields = {
         "first_name": row["first_name"] or row["name"].split()[0],
         "company": row["company"],
-        "category": (row["category"] or "business").lower(),
+        "category": row["category"] or "local",
         "city": (row["location"] or "").split(",")[0] or "your area",
         "rating": row["rating"] or "",
         "review_count": row["review_count"] or "",

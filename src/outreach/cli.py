@@ -127,7 +127,7 @@ def check(n: int = typer.Option(20, help="How many unchecked hits to review.")):
 def score():
     """Score every contact with a readable reason."""
     conn = db.connect()
-    rows = conn.execute("""SELECT p.*, c.address, c.location, c.rating, c.review_count, k.kind
+    rows = conn.execute("""SELECT p.*, c.domain, c.address, c.location, c.rating, c.review_count, k.kind
                            FROM people p JOIN companies c ON c.id = p.company_id
                            LEFT JOIN campaigns k ON k.id = c.campaign_id""").fetchall()
     for r in rows:

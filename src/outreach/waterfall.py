@@ -21,6 +21,12 @@ class Outcome:
     provider: Provider | None = None
     attempt_id: int | None = None
     attempts: list[int] = field(default_factory=list)
+    errored: bool = False  # some provider failed (5xx, network, 4xx) — a miss here isn't final
+
+    @property
+    def settled(self) -> bool:
+        """A hit, or every provider answered cleanly. Only then should the row be marked done."""
+        return self.hit is not None or not self.errored
 
 
 def run(
@@ -65,6 +71,8 @@ def run(
                        call_id=res.call_id, error=res.error)
             if ok:
                 db.cache_put(conn, key, p.tool_id, request, data)
+            else:
+                outcome.errored = True
 
         parsed = p.parse(data) if ok else None
         hit = parsed is not None and validate(parsed)

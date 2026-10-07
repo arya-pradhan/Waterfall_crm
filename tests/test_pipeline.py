@@ -17,6 +17,7 @@ def real(tool_id, cost):
 
 def fake_treg():
     return FakeClient({
+        "litescrape.google.serp.maps": (503, {"detail": "saturated"}, 0),  # forces the Maps fallback
         "anyapi.google.serp.maps": real("anyapi.google.serp.maps", 1750),
         "quickenrich.people.search": real("quickenrich.people.search", 0),
         "dropleads.people.search": real("dropleads.people.search", 0),
@@ -59,7 +60,8 @@ def test_benchmark_and_report(conn):
     client, budget = fake_treg(), Budget(1.0)
     pipeline.maps_campaign(conn, client, budget, "HVAC contractor", ["Abilene, TX, USA"], say=quiet)
     pipeline.find_people(conn, client, budget, limit=1, keep=1, say=quiet)
-    pipeline.enrich_emails(conn, client, budget, limit=1, benchmark=True, say=quiet)
+    pipeline.enrich_emails(conn, client, budget, limit=1, say=quiet)  # waterfall: stops at trykitt
+    pipeline.enrich_emails(conn, client, budget, limit=1, benchmark=True, say=quiet)  # then ask everyone
 
     stats = {s["tool_id"]: s for s in report.provider_stats(conn, "email_find")}
     assert stats["quickenrich.people.email.find"]["hit_rate"] == 0
@@ -67,7 +69,7 @@ def test_benchmark_and_report(conn):
     assert [s["rank"] for s in report.provider_stats(conn, "email_find")] == [1, 2, 3, 4]
 
     # mark tomba's answer wrong, kitt's right -> accuracy + cost per correct hit
-    ids = {r["tool_id"]: r["id"] for r in conn.execute("SELECT id, tool_id FROM enrichment_attempts WHERE capability='email_find' AND hit=1")}
+    ids = {r["tool_id"]: r["id"] for r in conn.execute("SELECT id, tool_id FROM enrichment_attempts WHERE capability='email_find' AND hit=1 AND cache_hit=0")}
     conn.execute("INSERT INTO accuracy_checks (attempt_id, correct) VALUES (?, 1)", (ids["trykitt.people.email.find"],))
     conn.execute("INSERT INTO accuracy_checks (attempt_id, correct) VALUES (?, 0)", (ids["tomba.people.email.find"],))
     stats = {s["tool_id"]: s for s in report.provider_stats(conn, "email_find")}
@@ -107,6 +109,13 @@ def test_location_conflict_flags_wrong_company():
     assert clean - s == 30
 
 
+def test_off_domain_email_penalized():
+    company = {"domain": "precisionheatac.com"}
+    on, _ = scoring.score_person({"title": "Owner", "email": "c@precisionheatac.com", "email_verified": 1}, company)
+    off, why = scoring.score_person({"title": "Owner", "email": "c@precision-hvac.com", "email_verified": 1}, company)
+    assert on - off == 15 and "≠ company domain" in why
+
+
 def test_state_parsing():
     assert scoring.state_of("4413 Sayles Blvd, Abilene, TX 79605") == "TX"
     assert scoring.state_of("Abilene, TX, USA") == "TX"
@@ -118,3 +127,5 @@ def test_title_ranking():
     ppl = [{"title": "Project Manager"}, {"title": None}, {"title": "Business Owner"}]
     assert [p["title"] for p in scoring.rank_people(ppl)] == ["Business Owner", "Project Manager", None]
     assert scoring.title_points("University Recruiter", "list")[0] == 40
+    assert scoring.title_points("Senior Vice President Integrations")[0] == 20
+    assert scoring.title_points("President")[0] == 40

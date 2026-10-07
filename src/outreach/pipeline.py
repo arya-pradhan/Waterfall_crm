@@ -77,8 +77,9 @@ def find_people(conn: sqlite3.Connection, client: TregClient, budget: Budget, *,
         kept = scoring.rank_people(out.hit or [], _campaign_kind(conn, c))[:keep]
         for p in kept:
             db.add_person(conn, c["id"], p)
-        db.update(conn, "companies", c["id"], people_searched_at=_now(conn))
-        who = ", ".join(f"{p['name']} ({p['title'] or '?'})" for p in kept) or "nobody"
+        if out.settled:
+            db.update(conn, "companies", c["id"], people_searched_at=_now(conn))
+        who = ", ".join(f"{p['name']} ({p['title'] or '?'})" for p in kept) or ("nobody" if out.settled else "ERROR, will retry")
         src = out.provider.tool_id if out.provider else "-"
         say(f"{c['name']} [{c['domain']}] -> {who}  via {src}")
 
@@ -87,14 +88,15 @@ def enrich_emails(conn: sqlite3.Connection, client: TregClient, budget: Budget, 
                   verify: bool = True, benchmark: bool = False, say: Progress = print) -> None:
     """benchmark=True asks every provider about every person (head-to-head data for the report)."""
     run_id = new_run_id()
-    where = "p.enriched_at IS NULL" if not benchmark else "1=1"
+    # Benchmark targets people the waterfall already answered: misses were already asked of every provider.
+    where = "p.enriched_at IS NULL" if not benchmark else "p.email IS NOT NULL"
     people = conn.execute(f"""
         SELECT p.*, c.domain FROM people p JOIN companies c ON c.id = p.company_id
         WHERE {where} AND c.domain IS NOT NULL ORDER BY p.id LIMIT ?""", (limit,)).fetchall()
     for p in people:
         out = waterfall.run(conn, client, budget, providers.EMAIL, dict(p),
                             entity_type="person", entity_id=p["id"], run_id=run_id, stop_on_hit=not benchmark)
-        fields = {"enriched_at": _now(conn)}
+        fields = {"enriched_at": _now(conn)} if out.settled else {}
         if out.hit and not p["email"]:
             fields.update(email=out.hit["email"], source_provider=out.provider.tool_id,
                           linkedin_url=p["linkedin_url"] or out.hit.get("linkedin_url"))
@@ -104,8 +106,9 @@ def enrich_emails(conn: sqlite3.Connection, client: TregClient, budget: Budget, 
                               entity_type="person", entity_id=p["id"], run_id=run_id)
             if v.hit:
                 fields.update(email_verified=int(v.hit["valid"]), email_status=v.hit["status"])
-        db.update(conn, "people", p["id"], **fields)
-        status = fields.get("email_status") or ""
+        if fields:
+            db.update(conn, "people", p["id"], **fields)
+        status = fields.get("email_status") or ("" if out.settled else "ERROR, will retry")
         say(f"{p['name']} [{p['domain']}] -> {email or 'no email'} {status}  "
             f"via {out.provider.tool_id if out.provider else '-'}")
 

@@ -60,6 +60,34 @@ def agreement(conn: sqlite3.Connection, capability: str = "email_find") -> dict[
     return {k: (v[0], v[1]) for k, v in tally.items()}
 
 
+def head_to_head(conn: sqlite3.Connection, capability: str = "email_find") -> tuple[int, int, list[dict]]:
+    """Only entities that EVERY current provider was asked about (live), so hit rates are comparable.
+
+    In waterfall mode the later providers only see what earlier ones missed — the hard cases —
+    so their raw hit rates are biased low. This view removes that bias.
+    """
+    tools = [p.tool_id for p in providers.BY_CAPABILITY[capability]]
+    rows = conn.execute(f"""
+        SELECT entity_id, tool_id, MAX(hit) AS hit, MAX(cost_micro) AS cost
+        FROM enrichment_attempts
+        WHERE capability = ? AND cache_hit = 0 AND tool_id IN ({','.join('?' * len(tools))})
+        GROUP BY entity_id, tool_id""", (capability, *tools)).fetchall()
+    by_entity: dict[int, dict[str, sqlite3.Row]] = defaultdict(dict)
+    for r in rows:
+        by_entity[r["entity_id"]][r["tool_id"]] = r
+    full = {e: answers for e, answers in by_entity.items() if len(answers) == len(tools)}
+    n = len(full)
+    out = []
+    for t in tools:
+        hits = sum(a[t]["hit"] for a in full.values())
+        unique = sum(a[t]["hit"] and sum(x["hit"] for x in a.values()) == 1 for a in full.values())
+        cost = sum(a[t]["cost"] for a in full.values())
+        out.append({"tool_id": t, "hits": hits, "unique": unique, "cost": cost,
+                    "hit_rate": hits / n if n else None, "cost_per_hit": cost / hits if hits else None})
+    found_any = sum(any(x["hit"] for x in a.values()) for a in full.values())
+    return n, found_any, out
+
+
 def funnel(conn: sqlite3.Connection) -> list[tuple[str, int]]:
     q = lambda sql: conn.execute(sql).fetchone()[0]  # noqa: E731
     return [
@@ -111,6 +139,19 @@ def render(conn: sqlite3.Connection) -> str:
                 f"| {s['avg_latency']:.0f} ms | {_usd(s['cost_per_attempt'])} | {_usd(s['cost_per_hit'])} "
                 f"| {s['checked']} | {_pct(s['accuracy'])} | {_usd(s['cost_per_correct'])} |"
             )
+        if cap == "email_find":
+            n, found_any, h2h = head_to_head(conn, cap)
+            if n:
+                lines += [
+                    "",
+                    f"**Head-to-head** — the same {n} people asked of every provider "
+                    f"({found_any} found by at least one). Unique = found by this provider only:",
+                    "",
+                    "| Provider | Found | Hit rate | Unique finds | Cost / hit |",
+                    "|---|---|---|---|---|",
+                ]
+                lines += [f"| `{h['tool_id']}` | {h['hits']}/{n} | {_pct(h['hit_rate'])} | {h['unique']} "
+                          f"| {_usd(h['cost_per_hit'])} |" for h in h2h]
         if cap == "email_find" and agree:
             lines += ["", "**Agreement with the majority answer** (people where 2+ providers answered):", ""]
             for tool, (ok, n) in sorted(agree.items(), key=lambda kv: -kv[1][1]):

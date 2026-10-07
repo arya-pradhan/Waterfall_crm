@@ -76,7 +76,36 @@ def _anyapi_maps_parse(data: Any) -> list[dict] | None:
     return rows or None
 
 
+def _litescrape_maps_parse(data: Any) -> list[dict] | None:
+    items = (data or {}).get("local_results") or []
+    rows = [
+        {
+            "name": it.get("title"),
+            "website": it.get("website"),
+            "domain": domain_of(it.get("website")),
+            "phone": it.get("phone"),
+            "address": it.get("address"),
+            "category": it.get("type"),
+            "rating": it.get("rating"),
+            "review_count": it.get("reviews"),
+            "place_id": it.get("place_id"),
+            "maps_url": f"https://www.google.com/maps/place/?q=place_id:{it['place_id']}" if it.get("place_id") else None,
+        }
+        for it in items
+        if it.get("title")
+    ]
+    return rows or None
+
+
 MAPS = [
+    Provider(
+        "maps_search",
+        "litescrape.google.serp.maps",
+        # Location rides inside q ("HVAC contractor in Austin, TX"); one page = up to 20 places.
+        lambda e: {"method": "GET", "query": {"q": f"{e['query']} in {e['location']}", "type": "search", "timeout": 60}},
+        _litescrape_maps_parse,
+        150,
+    ),
     Provider(
         "maps_search",
         "anyapi.google.serp.maps",

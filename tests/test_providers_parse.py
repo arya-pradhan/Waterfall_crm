@@ -26,6 +26,14 @@ def test_maps_parse():
     assert no_site["domain"] is None
 
 
+def test_litescrape_maps_parse():
+    rows = by_id("litescrape.google.serp.maps").parse(sample("litescrape.google.serp.maps"))
+    assert len(rows) == 20
+    assert rows[0]["domain"] == "coolmenow.com"  # utm params stripped
+    assert rows[0]["review_count"] == 3860
+    assert sum(r["domain"] is None for r in rows) == 1
+
+
 @pytest.mark.parametrize("tool_id", ["quickenrich.people.search", "dropleads.people.search", "leadsforge.people.search"])
 def test_people_parse(tool_id):
     rows = by_id(tool_id).parse(sample(tool_id))

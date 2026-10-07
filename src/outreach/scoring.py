@@ -21,7 +21,7 @@ STATES = {
 
 
 def title_points(title: str | None, kind: str = "maps") -> tuple[int, str]:
-    t = (title or "").lower()
+    t = (title or "").lower().replace("vice president", "vp")  # else "president" matches VPs
     if not t:
         return 0, "no title"
     if kind == "list" and any(k in t for k in HIRING):
@@ -86,6 +86,12 @@ def score_person(person: dict, company: dict, kind: str = "maps") -> tuple[int, 
         biz = min(15, reviews // 50) + (10 if rating >= 4.5 else 5 if rating >= 4.0 else 0)
         pts += biz
         reasons.append(f"{rating}★ / {reviews} reviews")
+
+    email, domain = person.get("email") or "", company.get("domain")
+    if email and domain and not email.lower().endswith("@" + domain) and not email.lower().endswith("." + domain):
+        # "valid" only means the mailbox exists — not that it belongs to this business
+        pts -= 15
+        reasons.append(f"email domain {email.split('@')[-1]} ≠ company domain {domain}")
 
     conflict = location_conflict(company, person)
     if conflict:

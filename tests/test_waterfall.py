@@ -65,11 +65,17 @@ def test_cache_means_second_run_is_free(conn):
     assert attempts(conn)[1]["cache_hit"] == 1 and attempts(conn)[1]["cost_micro"] == 0
 
 
-def test_errors_are_not_cached(conn):
+def test_errors_are_not_cached_or_settled(conn):
     client = FakeClient({"a.find": (500, None, 0)})
-    go(conn, client, [A])
+    out = go(conn, client, [A])
     go(conn, client, [A])
     assert client.calls == ["a.find", "a.find"]
+    assert not out.settled  # caller must retry this row later
+
+
+def test_clean_miss_is_settled(conn):
+    out = go(conn, FakeClient({"a.find": (200, {"email": None}, 0)}), [A])
+    assert out.hit is None and out.settled
 
 
 def test_402_stops_run_and_is_logged(conn):

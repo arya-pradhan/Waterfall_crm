@@ -1,0 +1,26 @@
+HTTP/2 200 
+date: Wed, 07 Oct 2026 16:51:42 GMT
+content-type: application/json
+alt-svc: h3=":443"; ma=86400
+cache-control: no-store
+cf-cache-status: DYNAMIC
+x-treg-cost-micro: 150
+content-security-policy: sandbox
+modal-function-call-id: fc-01M4BMDZS4F0H4ZYJDN5KYT3FK
+nel: {"report_to":"cf-nel","success_fraction":0.0,"max_age":604800}
+referrer-policy: no-referrer
+report-to: {"group":"cf-nel","max_age":604800,"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=9t0PpZg01g3BXzG0MZQHqMsF5FkXjC4CdtLhhoLE6FxUp%2FuCuitKJLVq0INuSrVn8wGgqxm2pZyDwMtc7kRCyzAgSsyNp%2FaJDxU6EUkB%2B1xwkgSiWluFmVrvmz%2BrU22hEBKIjMo%3D"}]}
+rndr-id: 591d5155-b439-4284
+server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains
+vary: Origin
+vary: accept-encoding
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-litescrape-received-at: 1791391891278
+x-render-origin-server: uvicorn
+x-request-id: 9e153a055afd31234d354da4
+x-treg-call-id: ec378583c7824bffb9d3335242ed30fe
+cf-ray: a46e69360a062720-IAD
+
