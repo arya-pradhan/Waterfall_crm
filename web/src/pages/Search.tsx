@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Link } from "react-router-dom";
 import { api, type Estimate, type Job } from "../api";
 import { useApi, usd } from "../hooks";
@@ -14,6 +14,17 @@ export function Search() {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const jobs = useApi(api.jobs, [], 3000);
+  // web/public/cities.txt: "City, ST" per line, biggest first (US Census 2024). Edit it to add places.
+  const cityList = useApi(() => fetch("/cities.txt").then((r) => r.text()).then((t) => t.split("\n").filter(Boolean)));
+  const suggestions = useMemo(() => {
+    const q = cityDraft.trim().toLowerCase();
+    const out: string[] = [];
+    if (q.length < 2) return out;
+    for (const c of cityList.data ?? []) {
+      if (c.toLowerCase().startsWith(q) && !cities.includes(c) && out.push(c) === 6) break;
+    }
+    return out;
+  }, [cityDraft, cityList.data, cities]);
 
   // Re-estimate shortly after the inputs settle; prefill the cap until the user edits it.
   useEffect(() => {
@@ -30,8 +41,8 @@ export function Search() {
     return () => clearTimeout(t);
   }, [query, cities, perCity, capTouched]);
 
-  const addCity = () => {
-    const c = cityDraft.trim();
+  const addCity = (value = cityDraft) => {
+    const c = value.trim();
     if (c && !cities.includes(c)) setCities([...cities, c]);
     setCityDraft("");
   };
@@ -72,8 +83,20 @@ export function Search() {
           </label>
           <label>
             Cities
-            <span className="hint">Press Enter after each one. City and state work best.</span>
-            <input value={cityDraft} onChange={(e) => setCityDraft(e.target.value)} onKeyDown={onCityKey} onBlur={addCity} placeholder="Austin, TX" />
+            <span className="hint">Pick a suggestion or press Enter. Any town works, even if it isn't suggested.</span>
+            <input
+              value={cityDraft}
+              list="city-suggestions"
+              autoComplete="off"
+              // Picking a suggestion fills in an exact match: add it straight away.
+              onChange={(e) => (suggestions.includes(e.target.value) ? addCity(e.target.value) : setCityDraft(e.target.value))}
+              onKeyDown={onCityKey}
+              onBlur={() => addCity()}
+              placeholder="Austin, TX"
+            />
+            <datalist id="city-suggestions">
+              {suggestions.map((c) => <option key={c} value={c} />)}
+            </datalist>
           </label>
           {cities.length > 0 && (
             <div className="chips">
