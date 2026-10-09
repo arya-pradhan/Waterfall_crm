@@ -36,7 +36,7 @@ export function Search() {
     setCityDraft("");
   };
   const onCityKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" || e.key === ",") {
+    if (e.key === "Enter") {  // not ",": "Austin, TX" needs the comma
       e.preventDefault();
       addCity();
     }
