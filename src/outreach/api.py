@@ -8,6 +8,7 @@ import datetime as dt
 import json
 import os
 import sqlite3
+import time
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
 from typing import Literal
@@ -74,6 +75,23 @@ def health():
     return {"treg_configured": bool(os.environ.get("TREG_TOKEN"))}
 
 
+_balance_cache: dict = {"at": 0.0, "value": None}
+LOW_BALANCE_USD = 0.25
+
+
+@app.get("/api/balance")
+def balance():
+    """Remaining treg balance for the corner chip. Cached 30s so page polling doesn't hammer treg."""
+    if time.monotonic() - _balance_cache["at"] > 30 or _balance_cache["value"] is None:
+        try:
+            _balance_cache["value"] = {"balance_usd": jobs.client_factory().balance_usd(), "error": None}
+        except Exception as e:  # show the problem in the chip instead of breaking the page
+            _balance_cache["value"] = {"balance_usd": None, "error": str(e)[:200]}
+        _balance_cache["at"] = time.monotonic()
+    v = _balance_cache["value"]
+    return {**v, "low": v["balance_usd"] is not None and v["balance_usd"] < LOW_BALANCE_USD}
+
+
 @app.post("/api/estimate")
 def estimate(body: SearchIn, conn: sqlite3.Connection = Conn):
     return jobs.estimate(conn, body.locations, body.per_location)
@@ -130,6 +148,7 @@ def list_groups(conn: sqlite3.Connection = Conn):
     for r in rows:
         g = dict(r)
         g["locations"] = json.loads(g["locations"]) if g["locations"] else []
+        g["progress"] = jobs.progress(conn, g["id"])
         out.append(g)
     return out
 
@@ -200,6 +219,17 @@ class PersonPatch(BaseModel):
 def list_people(status: Status | None = None, conn: sqlite3.Connection = Conn):
     """The CRM board: every contact, filterable by stage."""
     return _person_rows(conn, "p.status = ?", status) if status else _person_rows(conn, "1 = 1")
+
+
+@app.get("/api/upcoming")
+def upcoming(limit: int = 8, conn: sqlite3.Connection = Conn):
+    """Home's "Up next": open contacts with the nearest follow-up (or meeting) date, overdue first."""
+    rows = _person_rows(conn, "p.follow_up_date IS NOT NULL AND p.status != 'closed'")
+    rows.sort(key=lambda r: r["follow_up_date"])
+    today = dt.date.today()
+    for r in rows:
+        r["days_until"] = (dt.date.fromisoformat(r["follow_up_date"]) - today).days
+    return rows[:limit]
 
 
 @app.patch("/api/people/{person_id}")

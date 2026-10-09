@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "/opt/homebrew/bin/uv",
+      "runtimeArgs": ["run", "outreach", "serve"],
+      "port": 8000
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "/opt/homebrew/bin/npm",
+      "runtimeArgs": ["--prefix", "web", "run", "dev"],
+      "port": 5173
+    }
+  ]
+}

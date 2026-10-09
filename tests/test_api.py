@@ -97,3 +97,18 @@ def test_validation(env, monkeypatch):
     assert http.post("/api/estimate", json={**SEARCH, "locations": []}).status_code == 422
     monkeypatch.delenv("TREG_TOKEN")
     assert http.post("/api/searches", json=SEARCH).status_code == 400
+
+
+def test_balance_and_upcoming(env):
+    http, _ = env
+    b = http.get("/api/balance").json()
+    assert b["balance_usd"] == 0.42 and b["low"] is False
+    http.post("/api/searches", json={**SEARCH, "max_spend": 1.0})
+    people = [r for r in http.get("/api/groups/1/contacts").json() if r["person_id"]]
+    a, b2, c = (p["person_id"] for p in people[:3])
+    http.patch(f"/api/people/{a}", json={"follow_up_date": "2099-01-01"})
+    http.patch(f"/api/people/{b2}", json={"follow_up_date": "2000-01-01", "status": "meeting"})
+    http.patch(f"/api/people/{c}", json={"follow_up_date": "2001-01-01", "status": "closed"})
+    up = http.get("/api/upcoming").json()
+    assert [p["id"] for p in up] == [b2, a]  # overdue first; closed contacts excluded
+    assert up[0]["days_until"] < 0

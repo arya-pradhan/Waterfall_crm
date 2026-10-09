@@ -12,6 +12,9 @@ class FakeClient:
         self.answers = answers
         self.calls = []
 
+    def balance_usd(self):
+        return 0.42
+
     def call(self, tool_id, *, method="POST", query=None, body=None, headers=None):
         self.calls.append(tool_id)
         ans = self.answers[tool_id]

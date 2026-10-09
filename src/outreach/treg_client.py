@@ -77,6 +77,24 @@ class TregClient:
             error=None if ok else (r.headers.get("X-Treg-Error") or str(data)[:300]),
         )
 
+    def balance_usd(self) -> float:
+        """The team's remaining prepaid balance (free, read-only). Agent tokens can't list /orgs, so
+        fall back to /auth/me for their single org — the same lookup the treg CLI does."""
+        h = {"X-Treg-Token": self.token}
+        r = self.http.get(f"{self.base}/orgs", headers=h)
+        org_id = None
+        if r.status_code == 200:
+            rows = r.json() if isinstance(r.json(), list) else r.json().get("orgs", [])
+            org_id = next((o.get("org_id") for o in rows if o.get("active")), None)
+        if org_id is None:
+            me = self.http.get(f"{self.base}/auth/me", headers=h)
+            org_id = me.json().get("org_id") if me.status_code == 200 else None
+        if org_id is None:
+            raise RuntimeError("couldn't find the team for this treg token")
+        b = self.http.get(f"{self.base}/orgs/{org_id}/balance", params={"limit": 1}, headers=h)
+        b.raise_for_status()
+        return b.json()["balance_micro"] / 1e6
+
 
 def _ms(start: float) -> int:
     return int((time.monotonic() - start) * 1000)
