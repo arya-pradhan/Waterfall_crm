@@ -10,6 +10,9 @@ Purpose: portfolio project for a Clay (GTM data enrichment) recruiter screen. It
 ## Commands
 ```
 uv run pytest
+uv run outreach serve                     # builds web/ then serves UI + API at http://127.0.0.1:8000
+npm --prefix web run dev                  # UI dev server with live reload at :5173 (proxies /api to :8000)
+npm --prefix web run typecheck
 uv run outreach campaign "HVAC contractor" -m "Abilene, TX, USA" -m "Austin, TX, USA" --max-spend 0.02
 uv run outreach import leads.csv          # company, domain, [person_name, title, notes]
 uv run outreach find-people --keep 2
@@ -30,6 +33,8 @@ uv run outreach balance
 - `budget.py` — per-run `--max-spend`; a call is refused before it's made if its catalog price would cross the cap
 - `pipeline.py` — campaign/import/find_people/enrich steps; each only processes rows not yet done (re-runs resume)
 - `scoring.py`, `drafting.py` (+ `templates/`), `report.py`, `db.py`, `cli.py`
+- `api.py` — FastAPI JSON API for the UI; also serves the built UI from `web/dist`. `jobs.py` — background search worker (one at a time; pause/resume; estimates)
+- `web/` — React + TypeScript + Vite UI (`src/api.ts` is its only door to the API; `public/cities.txt` feeds city autocomplete)
 
 ## treg facts (verified with real calls, 2026-10-07)
 - Auth: header `X-Treg-Token`; this token bakes in team `prysma` (no `X-Treg-Org` needed).
@@ -52,7 +57,7 @@ uv run outreach balance
 
 ## Original brief (condensed)
 - Goal: signal -> enrich (provider waterfall) -> score -> draft outreach -> track in a thin CRM. The interesting work is upstream: per-provider hit rate, cost, and latency, logged and reported.
-- Two lead types: local SMBs by category + metro (the Integrus use case), and the user's own internship search (companies; contacts are recruiters / hiring managers / engineers).
+- Lead type: local businesses by category + metro (the Integrus use case); a CSV list of companies can also be imported.
 - Report = per provider: attempts, hit rate, avg latency, cost/attempt, cost/hit, rank, plus hand-checked accuracy. Never report hit rate alone as "quality".
 - MVP done when: 30–50 real leads enriched through a 3–4 provider waterfall; every attempt logged; a report with hit rate, cost/hit, latency, and accuracy per provider; leads scored with reasons; drafts for the top ones; CRM status/notes/follow-ups; a README with results and lessons.
 - Stretch: signal ingestion (career-page watcher, the treg `lead-signals` skill), routed `treg.people.email.find` as a baseline vs. our own waterfall, a simple web view.

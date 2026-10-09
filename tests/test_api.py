@@ -112,3 +112,19 @@ def test_balance_and_upcoming(env):
     up = http.get("/api/upcoming").json()
     assert [p["id"] for p in up] == [b2, a]  # overdue first; closed contacts excluded
     assert up[0]["days_until"] < 0
+
+
+def test_serves_built_ui(env, tmp_path, monkeypatch):
+    http, _ = env
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<div id=root></div>")
+    (dist / "assets" / "app.js").write_text("console.log(1)")
+    (tmp_path / "secret.txt").write_text("nope")
+    monkeypatch.setattr(api, "DIST", dist)
+    assert http.get("/assets/app.js").text == "console.log(1)"
+    assert http.get("/crm").text == "<div id=root></div>"  # app routes get index.html
+    for sneaky in ("/../secret.txt", "/%2e%2e/secret.txt", "/assets/%2e%2e/%2e%2e/secret.txt"):
+        assert "nope" not in http.get(sneaky).text  # can't climb out of web/dist
+    assert http.get("/api/nope").status_code == 404  # unknown API paths stay 404
+    assert http.get("/api/health").json()["treg_configured"]

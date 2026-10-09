@@ -126,6 +126,5 @@ def test_state_parsing():
 def test_title_ranking():
     ppl = [{"title": "Project Manager"}, {"title": None}, {"title": "Business Owner"}]
     assert [p["title"] for p in scoring.rank_people(ppl)] == ["Business Owner", "Project Manager", None]
-    assert scoring.title_points("University Recruiter", "list")[0] == 40
     assert scoring.title_points("Senior Vice President Integrations")[0] == 20
     assert scoring.title_points("President")[0] == 40

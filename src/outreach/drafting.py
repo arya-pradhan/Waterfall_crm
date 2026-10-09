@@ -14,13 +14,12 @@ def available() -> list[str]:
 
 def render(conn: sqlite3.Connection, person_id: int, template: str | None = None) -> str:
     row = conn.execute("""
-        SELECT p.*, c.name AS company, c.category, c.rating, c.review_count, c.location, c.domain,
-               k.kind AS campaign_kind
-        FROM people p JOIN companies c ON c.id = p.company_id LEFT JOIN campaigns k ON k.id = c.campaign_id
+        SELECT p.*, c.name AS company, c.category, c.rating, c.review_count, c.location, c.domain
+        FROM people p JOIN companies c ON c.id = p.company_id
         WHERE p.id = ?""", (person_id,)).fetchone()
     if row is None:
         raise KeyError(f"no person {person_id}")
-    name = template or ("internship_recruiter" if row["campaign_kind"] == "list" else "smb_owner")
+    name = template or "smb_owner"
     signal = conn.execute(
         "SELECT detail FROM signals WHERE company_id = ? ORDER BY detected_at DESC LIMIT 1", (row["company_id"],)
     ).fetchone()

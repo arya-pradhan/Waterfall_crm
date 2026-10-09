@@ -4,18 +4,44 @@ A small outreach pipeline with a provider waterfall at its core, built on [treg]
 
 ```
 Google Maps (business type × metro)  ─┐
-CSV target list (e.g. internships)   ─┴─> companies ─> people search ─> email waterfall ─> verify ─> score ─> draft ─> thin CRM
+CSV list of companies               ─┴─> companies ─> people search ─> email waterfall ─> verify ─> score ─> draft ─> thin CRM
                                                          (3 providers)    (4 providers)                              │
                                           every attempt logged: provider · hit/miss · cost · latency ───────> report.md
 ```
 
 It started as a rebuild of an n8n + Apify + Google Sheets lead scraper (business type + metro → a sheet of businesses). That version stopped at a list of company names. This one carries on to the decision-maker, a verified email, a reason to reach out, and a record of what happened, and it measures every data vendor along the way.
 
-## Quick start
+## Setup
+
+You need [uv](https://docs.astral.sh/uv/) (Python) and [Node.js](https://nodejs.org) 20 or newer
+(`brew install uv node` on a Mac), plus a [treg](https://treg.to) key for your team.
 
 ```bash
-uv sync
-cp .env.example .env            # add TREG_TOKEN
+cp .env.example .env            # then paste your key after TREG_TOKEN=
+uv run outreach serve           # builds the interface, then serves it
+```
+
+Open **http://127.0.0.1:8000**. It's only reachable from your own computer. Your key and the
+database (`data/outreach.db`) never leave it. Stop with Ctrl+C. Each start rebuilds the interface
+(a few seconds), so pulled changes always show up.
+
+- **Search:** business type + cities, with the cost and time estimate shown before anything runs.
+  Searches run in the background and pause (resumable) at the spending cap or if the server stops.
+- **Outreach:** each search's businesses and contacts, ranked, with verification badges and data-quality flags.
+- **Company pages:** contacts, stage, follow-up date, a copyable draft, and notes. Nothing is ever sent.
+- **CRM:** drag contacts between stages. Home shows the nearest follow-ups.
+
+City suggestions come from [`web/public/cities.txt`](web/public/cities.txt): one "City, ST" per line,
+biggest first (US Census 2024 estimates). Add or reorder lines to change them. Any place can still be typed.
+
+**Changing the interface?** Run `uv run outreach serve` in one terminal and `npm --prefix web run dev`
+in another, then use http://127.0.0.1:5173. It reloads as you edit.
+
+## Command line
+
+Everything the interface does is also a command:
+
+```bash
 uv run outreach campaign "HVAC contractor" -m "Abilene, TX, USA" -m "Austin, TX, USA" --max-spend 0.01
 uv run outreach find-people --keep 1
 uv run outreach enrich --max-spend 0.35

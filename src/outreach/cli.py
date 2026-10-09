@@ -53,7 +53,7 @@ def campaign(
 
 @app.command("import")
 def import_(path: Path = typer.Argument(..., exists=True, help="CSV: company, domain, [person_name, title, notes]")):
-    """Load a target list (e.g. internship companies) from CSV."""
+    """Load a list of companies (and optionally contacts) from CSV."""
     conn = db.connect()
     pipeline.import_csv(conn, path, say=typer.echo)
 
@@ -257,10 +257,23 @@ def export(out: Path = typer.Argument(Path("data/contacts.csv"))):
 
 @app.command()
 def serve(port: int = typer.Option(8000, help="Port on this computer.")):
-    """Start the web app at http://localhost:PORT (only reachable from this computer)."""
+    """Build the interface, then start the app at http://127.0.0.1:PORT (only reachable from this computer)."""
     import uvicorn
 
-    typer.echo(f"Waterfall CRM API on http://localhost:{port}  (docs: /docs) — Ctrl+C to stop")
+    web = Path(__file__).resolve().parents[2] / "web"
+    npm = shutil.which("npm")
+    if not npm:
+        typer.secho("Node.js is needed to build the interface. Install it from nodejs.org "
+                    "(or `brew install node`), then run this again.", fg="red")
+        raise typer.Exit(1)
+    steps = ([[npm, "install"]] if not (web / "node_modules").is_dir() else []) + [[npm, "run", "build"]]
+    for cmd in steps:
+        typer.echo(f"$ {' '.join(cmd[1:])}  (in web/)")
+        if subprocess.run(cmd, cwd=web).returncode:
+            typer.secho("The interface didn't build; see the errors above.", fg="red")
+            raise typer.Exit(1)
+
+    typer.secho(f"Waterfall CRM is running at http://127.0.0.1:{port} — Ctrl+C to stop", fg="green")
     uvicorn.run("outreach.api:app", host="127.0.0.1", port=port)  # 127.0.0.1: not exposed to the network
 
 

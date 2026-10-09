@@ -4,7 +4,6 @@ import re
 
 DECISION_MAKER = ("owner", "founder", "co-founder", "ceo", "president", "principal", "partner", "general manager")
 SENIOR = ("director", "vp", "vice president", "head", "chief", "manager")
-HIRING = ("recruit", "talent", "university", "campus", "hiring", "engineering manager")
 
 STATES = {
     "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR", "california": "CA", "colorado": "CO",
@@ -20,12 +19,10 @@ STATES = {
 }
 
 
-def title_points(title: str | None, kind: str = "maps") -> tuple[int, str]:
+def title_points(title: str | None) -> tuple[int, str]:
     t = (title or "").lower().replace("vice president", "vp")  # else "president" matches VPs
     if not t:
         return 0, "no title"
-    if kind == "list" and any(k in t for k in HIRING):
-        return 40, f"hiring role ({title})"
     if any(re.search(rf"\b{re.escape(k)}\b", t) for k in DECISION_MAKER):
         return 40, f"decision-maker ({title})"
     if any(re.search(rf"\b{re.escape(k)}\b", t) for k in SENIOR):
@@ -56,14 +53,14 @@ def location_conflict(company: dict, person: dict) -> str | None:
     return None
 
 
-def rank_people(people: list[dict], kind: str = "maps") -> list[dict]:
-    return sorted(people, key=lambda p: -title_points(p.get("title"), kind)[0])
+def rank_people(people: list[dict]) -> list[dict]:
+    return sorted(people, key=lambda p: -title_points(p.get("title"))[0])
 
 
-def score_person(person: dict, company: dict, kind: str = "maps") -> tuple[int, str]:
+def score_person(person: dict, company: dict) -> tuple[int, str]:
     pts, reasons = 0, []
 
-    p, why = title_points(person.get("title"), kind)
+    p, why = title_points(person.get("title"))
     pts += p
     reasons.append(why)
 

@@ -11,10 +11,12 @@ import sqlite3
 import time
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from . import db, drafting, jobs
@@ -261,3 +263,21 @@ def person_draft(person_id: int, conn: sqlite3.Connection = Conn):
         return {"draft": drafting.render(conn, person_id)}
     except KeyError:
         raise HTTPException(404, "not found")
+
+
+# ---------------------------------------------------------------- the built React app (web/dist)
+
+DIST = Path(__file__).resolve().parents[2] / "web" / "dist"
+
+
+@app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
+def frontend(path: str):
+    """Static files from the build; any other address (/crm, /companies/24) gets the app, which routes itself."""
+    if path.startswith("api/"):
+        raise HTTPException(404, "not found")
+    f = (DIST / path).resolve()
+    if path and f.is_file() and DIST.resolve() in f.parents:  # never serve outside web/dist
+        return FileResponse(f)
+    if (DIST / "index.html").is_file():
+        return FileResponse(DIST / "index.html")
+    raise HTTPException(404, "The interface isn't built yet. Start it with `uv run outreach serve`.")

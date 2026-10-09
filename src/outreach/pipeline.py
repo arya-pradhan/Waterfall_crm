@@ -72,11 +72,6 @@ def import_csv(conn: sqlite3.Connection, path: Path, say: Progress = print) -> i
     return campaign_id
 
 
-def _campaign_kind(conn: sqlite3.Connection, company: sqlite3.Row) -> str:
-    row = conn.execute("SELECT kind FROM campaigns WHERE id = ?", (company["campaign_id"],)).fetchone()
-    return row["kind"] if row else "maps"
-
-
 def _in_group(campaign_id: int | None, company_col: str) -> tuple[str, tuple]:
     """SQL filter limiting a step to one group's companies (or every company when campaign_id is None)."""
     if campaign_id is None:
@@ -94,7 +89,7 @@ def find_people(conn: sqlite3.Connection, client: TregClient, budget: Budget, *,
     for c in companies:
         out = waterfall.run(conn, client, budget, providers.PEOPLE, {"domain": c["domain"], "per_company": 5},
                             entity_type="company", entity_id=c["id"], run_id=run_id)
-        kept = scoring.rank_people(out.hit or [], _campaign_kind(conn, c))[:keep]
+        kept = scoring.rank_people(out.hit or [])[:keep]
         for p in kept:
             db.add_person(conn, c["id"], p)
         if out.settled:
@@ -138,11 +133,11 @@ def enrich_emails(conn: sqlite3.Connection, client: TregClient, budget: Budget, 
 def score_people(conn: sqlite3.Connection, campaign_id: int | None = None) -> int:
     """Append a fresh score + reason for each contact (the latest row is the current score)."""
     group_sql, group_args = _in_group(campaign_id, "c.id")
-    rows = conn.execute(f"""SELECT p.*, c.domain, c.address, c.location, c.rating, c.review_count, k.kind
-                            FROM people p JOIN companies c ON c.id = p.company_id
-                            LEFT JOIN campaigns k ON k.id = c.campaign_id WHERE 1=1{group_sql}""", group_args).fetchall()
+    rows = conn.execute(f"""SELECT p.*, c.domain, c.address, c.location, c.rating, c.review_count
+                            FROM people p JOIN companies c ON c.id = p.company_id WHERE 1=1{group_sql}""",
+                        group_args).fetchall()
     for r in rows:
-        s, why = scoring.score_person(dict(r), dict(r), r["kind"] or "maps")
+        s, why = scoring.score_person(dict(r), dict(r))
         conn.execute("INSERT INTO scores (entity_type, entity_id, score, reason) VALUES ('person', ?, ?, ?)", (r["id"], s, why))
     conn.commit()
     return len(rows)
