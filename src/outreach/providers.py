@@ -101,15 +101,19 @@ MAPS = [
     Provider(
         "maps_search",
         "litescrape.google.serp.maps",
-        # Location rides inside q ("HVAC contractor in Austin, TX"); one page = up to 20 places.
-        lambda e: {"method": "GET", "query": {"q": f"{e['query']} in {e['location']}", "type": "search", "timeout": 60}},
+        # Location rides inside q ("HVAC contractor in Austin, TX"); one page = up to 20 places,
+        # later pages via start=20, 40, ... (only sent when > 0 so page 1 keeps its cache key).
+        lambda e: {"method": "GET", "query": {"q": f"{e['query']} in {e['location']}", "type": "search", "timeout": 60,
+                                              **({"start": e["start"]} if e.get("start") else {})}},
         _litescrape_maps_parse,
         150,
     ),
     Provider(
         "maps_search",
         "anyapi.google.serp.maps",
-        lambda e: {"method": "POST", "body": {"query": e["query"], "location": e["location"], "limit": e.get("limit", 20)}},
+        # No paging on this route: it can only stand in for the first page.
+        lambda e: None if e.get("start") else
+        {"method": "POST", "body": {"query": e["query"], "location": e["location"], "limit": e.get("limit", 20)}},
         _anyapi_maps_parse,
         1750,
     ),

@@ -53,6 +53,7 @@ def run(
         log = dict(
             run_id=run_id, entity_type=entity_type, entity_id=entity_id, capability=p.capability,
             provider=p.tool_id.split(".")[0], tool_id=p.tool_id, rank=rank,
+            mode="waterfall" if stop_on_hit else "benchmark",
         )
         if cached is not None:
             data, ok, status = cached, True, 200

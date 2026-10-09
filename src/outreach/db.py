@@ -113,6 +113,31 @@ CREATE TABLE IF NOT EXISTS outreach (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   sent_at TEXT
 );
+CREATE TABLE IF NOT EXISTS campaign_companies (
+  campaign_id INTEGER NOT NULL REFERENCES campaigns(id),
+  company_id INTEGER NOT NULL REFERENCES companies(id),
+  PRIMARY KEY (campaign_id, company_id)
+);
+CREATE TABLE IF NOT EXISTS company_notes (
+  id INTEGER PRIMARY KEY,
+  company_id INTEGER NOT NULL REFERENCES companies(id),
+  note TEXT NOT NULL,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS jobs (
+  id INTEGER PRIMARY KEY,
+  campaign_id INTEGER REFERENCES campaigns(id),
+  query TEXT NOT NULL,
+  locations TEXT NOT NULL,
+  per_location INTEGER NOT NULL,
+  max_spend_micro INTEGER NOT NULL,
+  spent_micro INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'running', 'paused', 'done', 'failed')),
+  stage TEXT,
+  message TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS activity (
   id INTEGER PRIMARY KEY,
   person_id INTEGER NOT NULL REFERENCES people(id),
@@ -129,11 +154,30 @@ def connect(path: str | None = None) -> sqlite3.Connection:
     path = path or os.environ.get("OUTREACH_DB", "data/outreach.db")
     if path != ":memory:":
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path)
+    # The web server reads while the background job writes: wait on locks instead of failing,
+    # and use WAL so readers don't block the writer.
+    conn = sqlite3.connect(path, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    if path != ":memory:":
+        conn.execute("PRAGMA journal_mode = WAL")
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(enrichment_attempts)")}
+    if "mode" not in cols:
+        conn.execute("ALTER TABLE enrichment_attempts ADD COLUMN mode TEXT NOT NULL DEFAULT 'waterfall'")
+        # Older benchmark runs: any run where one person got 2+ email hits asked every provider.
+        conn.execute("""UPDATE enrichment_attempts SET mode = 'benchmark' WHERE run_id IN (
+            SELECT run_id FROM enrichment_attempts WHERE capability = 'email_find'
+            GROUP BY run_id, entity_id HAVING SUM(hit) > 1)""")
+    # Group membership used to live only in companies.campaign_id (first group to find a company).
+    conn.execute("""INSERT OR IGNORE INTO campaign_companies (campaign_id, company_id)
+                    SELECT campaign_id, id FROM companies WHERE campaign_id IS NOT NULL""")
+    conn.commit()
 
 
 # ---------------------------------------------------------------- cache
@@ -180,23 +224,30 @@ COMPANY_COLS = ("name", "domain", "website", "phone", "address", "location", "ca
 
 
 def upsert_company(conn: sqlite3.Connection, campaign_id: int | None, c: dict) -> tuple[int, bool]:
-    """Insert unless a company with the same domain (or Maps place_id) exists. Returns (id, created)."""
+    """Insert unless a company with the same domain (or Maps place_id) exists. Returns (id, created).
+
+    Either way the company joins this campaign's group, so a repeat search still shows it.
+    """
+    existing = None
     for col in ("domain", "place_id"):
-        if c.get(col):
-            row = conn.execute(f"SELECT id FROM companies WHERE {col} = ?", (c[col],)).fetchone()
-            if row:
-                return row["id"], False
-    if not c.get("domain") and not c.get("place_id"):
-        row = conn.execute("SELECT id FROM companies WHERE lower(name) = lower(?)", (c["name"],)).fetchone()
-        if row:
-            return row["id"], False
-    vals = {k: c.get(k) for k in COMPANY_COLS}
-    cur = conn.execute(
-        f"INSERT INTO companies (campaign_id, {', '.join(vals)}) VALUES (?, {', '.join('?' * len(vals))})",
-        (campaign_id, *vals.values()),
-    )
+        if c.get(col) and existing is None:
+            existing = conn.execute(f"SELECT id FROM companies WHERE {col} = ?", (c[col],)).fetchone()
+    if existing is None and not c.get("domain") and not c.get("place_id"):
+        existing = conn.execute("SELECT id FROM companies WHERE lower(name) = lower(?)", (c["name"],)).fetchone()
+    if existing:
+        company_id, created = existing["id"], False
+    else:
+        vals = {k: c.get(k) for k in COMPANY_COLS}
+        cur = conn.execute(
+            f"INSERT INTO companies (campaign_id, {', '.join(vals)}) VALUES (?, {', '.join('?' * len(vals))})",
+            (campaign_id, *vals.values()),
+        )
+        company_id, created = cur.lastrowid, True
+    if campaign_id is not None:
+        conn.execute("INSERT OR IGNORE INTO campaign_companies (campaign_id, company_id) VALUES (?, ?)",
+                     (campaign_id, company_id))
     conn.commit()
-    return cur.lastrowid, True
+    return company_id, created
 
 
 def add_person(conn: sqlite3.Connection, company_id: int, p: dict) -> tuple[int, bool]:

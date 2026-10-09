@@ -10,7 +10,7 @@ from pathlib import Path
 import typer
 from dotenv import load_dotenv
 
-from . import db, drafting, pipeline, report, scoring
+from . import db, drafting, pipeline, report
 from .budget import Budget, BudgetExceeded
 from .treg_client import OutOfBalance, TregClient
 
@@ -42,12 +42,12 @@ def paid_run(max_spend: float):
 def campaign(
     query: str = typer.Argument(..., help='What you would type into Google Maps, e.g. "HVAC contractor".'),
     metro: list[str] = typer.Option(..., "--metro", "-m", help='Repeatable, e.g. -m "Abilene, TX, USA".'),
-    limit: int = typer.Option(20, help="Places per metro (max 20)."),
+    limit: int = typer.Option(20, help="Places per metro (fetched 20 per page)."),
     max_spend: float = MaxSpend,
 ):
     """Integrus-style sourcing: business type x metros -> companies (via Google Maps)."""
     with paid_run(max_spend) as (conn, client, budget):
-        cid = pipeline.maps_campaign(conn, client, budget, query, metro, min(limit, 20), say=typer.echo)
+        cid = pipeline.maps_campaign(conn, client, budget, query, metro, limit, say=typer.echo)
         typer.echo(f"campaign {cid} done")
 
 
@@ -126,15 +126,8 @@ def check(n: int = typer.Option(20, help="How many unchecked hits to review.")):
 @app.command()
 def score():
     """Score every contact with a readable reason."""
-    conn = db.connect()
-    rows = conn.execute("""SELECT p.*, c.domain, c.address, c.location, c.rating, c.review_count, k.kind
-                           FROM people p JOIN companies c ON c.id = p.company_id
-                           LEFT JOIN campaigns k ON k.id = c.campaign_id""").fetchall()
-    for r in rows:
-        s, why = scoring.score_person(dict(r), dict(r), r["kind"] or "maps")
-        conn.execute("INSERT INTO scores (entity_type, entity_id, score, reason) VALUES ('person', ?, ?, ?)", (r["id"], s, why))
-    conn.commit()
-    typer.echo(f"scored {len(rows)} contacts — see `outreach list`")
+    n = pipeline.score_people(db.connect())
+    typer.echo(f"scored {n} contacts — see `outreach list`")
 
 
 @app.command()
@@ -260,6 +253,15 @@ def export(out: Path = typer.Argument(Path("data/contacts.csv"))):
         w.writerow(rows[0].keys() if rows else ["id"])
         w.writerows(tuple(r) for r in rows)
     typer.echo(f"{len(rows)} contacts -> {out}")
+
+
+@app.command()
+def serve(port: int = typer.Option(8000, help="Port on this computer.")):
+    """Start the web app at http://localhost:PORT (only reachable from this computer)."""
+    import uvicorn
+
+    typer.echo(f"Waterfall CRM API on http://localhost:{port}  (docs: /docs) — Ctrl+C to stop")
+    uvicorn.run("outreach.api:app", host="127.0.0.1", port=port)  # 127.0.0.1: not exposed to the network
 
 
 @app.command()

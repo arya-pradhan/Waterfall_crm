@@ -21,19 +21,31 @@ def new_run_id() -> str:
     return uuid.uuid4().hex[:8]
 
 
+PAGE = 20  # Maps results per page
+
+
 def maps_campaign(conn: sqlite3.Connection, client: TregClient, budget: Budget, query: str,
-                  metros: list[str], limit: int = 20, say: Progress = print) -> int:
-    campaign_id = db.create_campaign(conn, "maps", query, metros)
+                  metros: list[str], limit: int = 20, say: Progress = print,
+                  campaign_id: int | None = None) -> int:
+    """Up to `limit` places per metro, fetched a page at a time. Pass campaign_id to resume a group:
+    pages already fetched replay from the cache for free."""
+    if campaign_id is None:
+        campaign_id = db.create_campaign(conn, "maps", query, metros)
     run_id = new_run_id()
     for metro in metros:
-        out = waterfall.run(conn, client, budget, providers.MAPS,
-                            {"query": query, "location": metro, "limit": limit},
-                            entity_type="campaign", entity_id=campaign_id, run_id=run_id)
-        added = 0
-        for row in out.hit or []:
-            _, created = db.upsert_company(conn, campaign_id, {**row, "location": metro})
-            added += created
-        say(f"{metro}: {len(out.hit or [])} places, {added} new companies")
+        found = added = 0
+        for start in range(0, limit, PAGE):
+            out = waterfall.run(conn, client, budget, providers.MAPS,
+                                {"query": query, "location": metro, "limit": min(PAGE, limit - start), "start": start},
+                                entity_type="campaign", entity_id=campaign_id, run_id=run_id)
+            rows = (out.hit or [])[: limit - found]
+            for row in rows:
+                _, created = db.upsert_company(conn, campaign_id, {**row, "location": metro})
+                added += created
+            found += len(rows)
+            if len(out.hit or []) < PAGE:  # last page (or a miss): Maps has no more for this metro
+                break
+        say(f"{metro}: {found} places, {added} new companies")
     return campaign_id
 
 
@@ -65,12 +77,20 @@ def _campaign_kind(conn: sqlite3.Connection, company: sqlite3.Row) -> str:
     return row["kind"] if row else "maps"
 
 
+def _in_group(campaign_id: int | None, company_col: str) -> tuple[str, tuple]:
+    """SQL filter limiting a step to one group's companies (or every company when campaign_id is None)."""
+    if campaign_id is None:
+        return "", ()
+    return f" AND {company_col} IN (SELECT company_id FROM campaign_companies WHERE campaign_id = ?)", (campaign_id,)
+
+
 def find_people(conn: sqlite3.Connection, client: TregClient, budget: Budget, *, limit: int = 50,
-                keep: int = 2, say: Progress = print) -> None:
+                keep: int = 2, say: Progress = print, campaign_id: int | None = None) -> None:
     run_id = new_run_id()
+    group_sql, group_args = _in_group(campaign_id, "id")
     companies = conn.execute(
-        "SELECT * FROM companies WHERE domain IS NOT NULL AND people_searched_at IS NULL ORDER BY id LIMIT ?",
-        (limit,)).fetchall()
+        f"SELECT * FROM companies WHERE domain IS NOT NULL AND people_searched_at IS NULL{group_sql} ORDER BY id LIMIT ?",
+        (*group_args, limit)).fetchall()
     for c in companies:
         out = waterfall.run(conn, client, budget, providers.PEOPLE, {"domain": c["domain"], "per_company": 5},
                             entity_type="company", entity_id=c["id"], run_id=run_id)
@@ -85,14 +105,16 @@ def find_people(conn: sqlite3.Connection, client: TregClient, budget: Budget, *,
 
 
 def enrich_emails(conn: sqlite3.Connection, client: TregClient, budget: Budget, *, limit: int = 50,
-                  verify: bool = True, benchmark: bool = False, say: Progress = print) -> None:
+                  verify: bool = True, benchmark: bool = False, say: Progress = print,
+                  campaign_id: int | None = None) -> None:
     """benchmark=True asks every provider about every person (head-to-head data for the report)."""
     run_id = new_run_id()
     # Benchmark targets people the waterfall already answered: misses were already asked of every provider.
     where = "p.enriched_at IS NULL" if not benchmark else "p.email IS NOT NULL"
+    group_sql, group_args = _in_group(campaign_id, "c.id")
     people = conn.execute(f"""
         SELECT p.*, c.domain FROM people p JOIN companies c ON c.id = p.company_id
-        WHERE {where} AND c.domain IS NOT NULL ORDER BY p.id LIMIT ?""", (limit,)).fetchall()
+        WHERE {where} AND c.domain IS NOT NULL{group_sql} ORDER BY p.id LIMIT ?""", (*group_args, limit)).fetchall()
     for p in people:
         out = waterfall.run(conn, client, budget, providers.EMAIL, dict(p),
                             entity_type="person", entity_id=p["id"], run_id=run_id, stop_on_hit=not benchmark)
@@ -111,6 +133,19 @@ def enrich_emails(conn: sqlite3.Connection, client: TregClient, budget: Budget, 
         status = fields.get("email_status") or ("" if out.settled else "ERROR, will retry")
         say(f"{p['name']} [{p['domain']}] -> {email or 'no email'} {status}  "
             f"via {out.provider.tool_id if out.provider else '-'}")
+
+
+def score_people(conn: sqlite3.Connection, campaign_id: int | None = None) -> int:
+    """Append a fresh score + reason for each contact (the latest row is the current score)."""
+    group_sql, group_args = _in_group(campaign_id, "c.id")
+    rows = conn.execute(f"""SELECT p.*, c.domain, c.address, c.location, c.rating, c.review_count, k.kind
+                            FROM people p JOIN companies c ON c.id = p.company_id
+                            LEFT JOIN campaigns k ON k.id = c.campaign_id WHERE 1=1{group_sql}""", group_args).fetchall()
+    for r in rows:
+        s, why = scoring.score_person(dict(r), dict(r), r["kind"] or "maps")
+        conn.execute("INSERT INTO scores (entity_type, entity_id, score, reason) VALUES ('person', ?, ?, ?)", (r["id"], s, why))
+    conn.commit()
+    return len(rows)
 
 
 def _now(conn: sqlite3.Connection) -> str:
